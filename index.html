@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radiance Lab | 辐射计算台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero__content">
+          <p class="eyebrow">Radiance Lab</p>
+          <h1>黑体辐射计算与辐亮度曲线绘制</h1>
+          <p class="hero__lead">
+            输入温度、发射率和波段范围，网页会按 Planck 定律计算谱辐亮度，并给出曲线图、波段积分结果、峰值波长和总辐射出射度。
+          </p>
+        </div>
+        <div class="hero__tags">
+          <span>Planck</span>
+          <span>Wien</span>
+          <span>Stefan-Boltzmann</span>
+        </div>
+      </header>
+
+      <main class="page-grid">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="section-label">参数输入</p>
+              <h2>设置计算区间</h2>
+            </div>
+            <button class="ghost-btn" id="presetButton" type="button">载入红外示例</button>
+          </div>
+
+          <form id="radiationForm" class="control-form">
+            <div class="form-grid">
+              <label>
+                <span>温度 T / K</span>
+                <input id="temperatureInput" name="temperature" type="number" min="1" step="1" value="600" required />
+              </label>
+              <label>
+                <span>发射率 ε</span>
+                <input id="emissivityInput" name="emissivity" type="number" min="0.01" max="1" step="0.01" value="0.95" required />
+              </label>
+              <label>
+                <span>起始波长 / um</span>
+                <input id="lambdaMinInput" name="lambdaMin" type="number" min="0.01" step="0.01" value="3" required />
+              </label>
+              <label>
+                <span>结束波长 / um</span>
+                <input id="lambdaMaxInput" name="lambdaMax" type="number" min="0.02" step="0.01" value="14" required />
+              </label>
+              <label>
+                <span>采样点数</span>
+                <input id="sampleCountInput" name="sampleCount" type="number" min="120" max="3000" step="20" value="600" required />
+              </label>
+              <label>
+                <span>光谱变量</span>
+                <select id="spectralVariableInput" name="spectralVariable">
+                  <option value="wavelength">按波长</option>
+                  <option value="wavenumber">按波数</option>
+                </select>
+              </label>
+              <label>
+                <span>辐亮度单位</span>
+                <select id="radianceUnitInput" name="radianceUnit">
+                  <option value="w_m2_sr_um">W/(m2·sr·um)</option>
+                  <option value="w_cm2_sr_um">W/(cm2·sr·um)</option>
+                  <option value="w_m2_sr_cm-1">W/(m2·sr·cm-1)</option>
+                  <option value="w_cm2_sr_cm-1">W/(cm2·sr·cm-1)</option>
+                </select>
+              </label>
+              <label>
+                <span>纵轴模式</span>
+                <select id="scaleModeInput" name="scaleMode">
+                  <option value="linear">线性</option>
+                  <option value="log">对数</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">计算并绘图</button>
+              <button class="ghost-btn ghost-btn--ink" id="copyButton" type="button">复制摘要</button>
+            </div>
+
+            <p class="helper-text" id="statusText">
+              单位说明：谱辐亮度采用 W/(m2·sr·um)，波段积分辐亮度采用 W/(m2·sr)。
+            </p>
+          </form>
+        </section>
+
+        <section class="stats-grid" id="statsGrid"></section>
+
+        <section class="panel panel--wide">
+          <div class="section-head">
+            <div>
+              <p class="section-label">光谱结果</p>
+              <h2>辐亮度曲线</h2>
+            </div>
+            <span class="chart-note" id="chartNote"></span>
+          </div>
+
+          <div class="chart-wrap">
+            <svg id="chartSvg" viewBox="0 0 960 460" aria-label="辐亮度曲线图" role="img"></svg>
+            <div id="chartTooltip" class="chart-tooltip" hidden></div>
+          </div>
+        </section>
+
+        <section class="detail-grid">
+          <article class="panel">
+            <div class="section-head">
+              <div>
+                <p class="section-label">波段分析</p>
+                <h2>关键数值</h2>
+              </div>
+            </div>
+            <div id="bandMetrics" class="metric-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="section-head">
+              <div>
+                <p class="section-label">模型说明</p>
+                <h2>当前假设</h2>
+              </div>
+            </div>
+            <div class="notes">
+              <p>默认按灰体处理，即黑体谱辐亮度乘以发射率 ε。</p>
+              <p>积分采用梯形数值积分，对输入波段范围内的谱辐亮度进行累加。</p>
+              <p>总辐射出射度使用 εσT4，峰值波长使用 Wien 位移定律近似。</p>
+              <p>页面同时支持按波长和按波数观察光谱分布，并根据选择的单位自动换算结果。</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="section-label">理论速览</p>
+              <h2>红外辐射基础</h2>
+            </div>
+          </div>
+
+          <div class="theory-grid" id="theoryGrid">
+            <button class="theory-card is-active" type="button" data-theory="planck">
+              <strong>Planck 定律</strong>
+              <span>描述黑体在不同波长下的谱辐射分布。</span>
+            </button>
+            <button class="theory-card" type="button" data-theory="wien">
+              <strong>Wien 位移定律</strong>
+              <span>给出温度与峰值波长的反比关系。</span>
+            </button>
+            <button class="theory-card" type="button" data-theory="stefan">
+              <strong>Stefan-Boltzmann 定律</strong>
+              <span>给出总辐射出射度与温度四次方的关系。</span>
+            </button>
+            <button class="theory-card" type="button" data-theory="infrared">
+              <strong>红外波段</strong>
+              <span>区分近红外、中红外和远红外的常见范围。</span>
+            </button>
+          </div>
+
+          <article class="theory-detail" id="theoryDetail"></article>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
